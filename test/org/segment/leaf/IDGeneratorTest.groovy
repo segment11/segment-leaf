@@ -1,15 +1,3 @@
-# segment-leaf
-Rewrite https://github.com/Meituan-Dianping/Leaf with Groovy, add unit tests.
-
-## Main Classes
-
-> 1. IDGenerator.groovy -> get increase id.
-> 2. OneBiz.groovy -> dao model and methods.
-
-## Unit tests using Spock
-
-## IDGeneratorTest
-```groovy
 package org.segment.leaf
 
 import groovy.sql.Sql
@@ -241,4 +229,3 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         log.warn namePre3 + ' test done'
     }
 }
-```
