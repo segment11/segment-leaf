@@ -108,9 +108,11 @@ class IDGenerator {
             buffer.rLock().lock()
             try {
                 def segment = buffer.current()
+
+                int segmentCurrentIdleLeftPercent = Conf.instance.getInt('segment_current_idle_left_percent', 90)
                 // need load next segment
                 if (!buffer.isNextReady() &&
-                        (segment.idle < 0.9 * segment.step) &&
+                        (segment.idle < (segmentCurrentIdleLeftPercent / 100 * segment.step)) &&
                         buffer.threadRunning.compareAndSet(false, true)
                 ) {
                     service.submit {
@@ -206,7 +208,7 @@ class IDGenerator {
                     newStep = newStep * 2
                 }
             } else if (duration < segmentDuration * 2) {
-                //do nothing with nextStep
+                //do nothing with newStep
             } else {
                 if (newStep / 2 >= buffer.minStep) {
                     newStep = (newStep / 2) as int
@@ -238,7 +240,7 @@ class IDGenerator {
         }, 60, 60, TimeUnit.SECONDS)
     }
 
-    private void updateCacheFromDb() {
+    synchronized void updateCacheFromDb() {
         log.info 'update cache from db'
 
         def bizTags = OneBiz.getAllBizTagList()
@@ -261,7 +263,7 @@ class IDGenerator {
 
         // remove cache if not config in db
         for (cachedTag in cachedTags) {
-            if (!bizTags.contains(cachedTags)) {
+            if (!bizTags.contains(cachedTag)) {
                 cache.remove(cachedTag)
                 log.info 'remove cache tag not in db {}', cachedTag
             }

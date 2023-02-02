@@ -12,6 +12,7 @@ class Result {
         this.status = status
     }
 
+    @CompileStatic
     static enum Status {
         SUCCESS, EXCEPTION
     }
