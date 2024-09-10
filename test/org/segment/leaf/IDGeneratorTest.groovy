@@ -3,7 +3,6 @@ package org.segment.leaf
 import groovy.sql.Sql
 import groovy.util.logging.Slf4j
 import org.h2.jdbcx.JdbcDataSource
-import org.junit.Before
 import spock.lang.Specification
 
 import javax.sql.DataSource
@@ -14,8 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class IDGeneratorTest extends Specification {
     DataSource dataSource
 
-    @Before
-    void before() {
+    void setup() {
         dataSource = new JdbcDataSource()
         dataSource.url = 'jdbc:h2:~/test-segment-leaf'
         dataSource.user = 'sa'
@@ -24,15 +22,14 @@ class IDGeneratorTest extends Specification {
         def sql = new Sql(dataSource)
 
         String ddl = '''
-CREATE TABLE if not exists leaf_alloc (
-  biz_tag varchar(128)  NOT NULL DEFAULT '',
-  max_id bigint(20) NOT NULL DEFAULT '1',
-  step int(11) NOT NULL,
-  description varchar(256)  DEFAULT NULL,
-  update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (biz_tag)
+create table if not exists leaf_alloc(
+    biz_tag varchar(128) primary key,
+    max_id bigint not null default '1',
+    step int,
+    description varchar(256) default null,
+    update_time timestamp default current_timestamp
 )
-'''
+'''.trim()
         sql.execute(ddl)
         sql.executeUpdate('delete from leaf_alloc')
         // begin step = 100 so it can expand
@@ -42,14 +39,14 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         sql.executeUpdate(addSql)
     }
 
-    void testGet() {
+    def 'test get'() {
         given:
         def id = new IDGenerator()
         id.dataSource = dataSource
         id.init()
         and:
         List<Result> list = []
-        final int loopTimes = 200
+        int loopTimes = 200
         loopTimes.times {
             list << id.get('leaf-segment-test')
             // mock do business
@@ -66,7 +63,7 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         id.close()
     }
 
-    void testGetMultiThread() {
+    def 'test get multi threads'() {
         given:
         def id = new IDGenerator()
         id.name = 'id generator'
@@ -80,7 +77,7 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         sql.executeUpdate('update leaf_alloc set step = 2000')
 
         final int threadNumber = 100
-        final int loopTimes = 1000
+        int loopTimes = 1000
         def set = Collections.synchronizedSortedSet(new TreeSet<Long>())
         def latch = new CountDownLatch(threadNumber)
         AtomicInteger failedNumber = new AtomicInteger(0)
@@ -117,7 +114,7 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         log.warn namePre + ' test done'
     }
 
-    void testGetMultiThreadWithMultiInstance() {
+    def 'test get multi threads multi instances'() {
         given:
         def id1 = new IDGenerator()
         id1.name = 'id generator 1'
@@ -140,7 +137,7 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         sql.executeUpdate('update leaf_alloc set step = 10000')
 
         final int threadNumber = 100
-        final int loopTimes = 1000
+        int loopTimes = 1000
         def set1 = Collections.synchronizedSortedSet(new TreeSet<Long>())
         def set2 = Collections.synchronizedSortedSet(new TreeSet<Long>())
         def set3 = Collections.synchronizedSortedSet(new TreeSet<Long>())

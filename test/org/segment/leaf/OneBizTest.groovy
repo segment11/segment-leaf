@@ -3,20 +3,16 @@ package org.segment.leaf
 import groovy.sql.Sql
 import groovy.util.logging.Slf4j
 import org.h2.jdbcx.JdbcDataSource
-import org.junit.After
-import org.junit.Before
 import spock.lang.Specification
 
-import javax.sql.DataSource
 import java.util.concurrent.CountDownLatch
 
 @Slf4j
 class OneBizTest extends Specification {
     private Sql sql
 
-    @Before
-    void before() {
-        DataSource dataSource = new JdbcDataSource()
+    void setup() {
+        var dataSource = new JdbcDataSource()
         dataSource.url = 'jdbc:h2:~/test-segment-leaf'
         dataSource.user = 'sa'
         dataSource.password = ''
@@ -24,34 +20,31 @@ class OneBizTest extends Specification {
         sql = new Sql(dataSource)
 
         String ddl = '''
-CREATE TABLE if not exists leaf_alloc (
-  biz_tag varchar(128)  NOT NULL DEFAULT '',
-  max_id bigint(20) NOT NULL DEFAULT '1',
-  step int(11) NOT NULL,
-  description varchar(256)  DEFAULT NULL,
-  update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (biz_tag)
+create table if not exists leaf_alloc(
+    biz_tag varchar(128) primary key,
+    max_id bigint not null default '1',
+    step int,
+    description varchar(256) default null,
+    update_time timestamp default current_timestamp
 )
-'''
+'''.trim()
         sql.execute(ddl)
-        clearTable()
         DsHolder.instance.dataSource = dataSource
     }
 
-    @After
-    void clearTable() {
+    void cleanup() {
         sql.executeUpdate('delete from leaf_alloc')
         log.info 'clear table leaf_alloc'
     }
 
-    void addOneRow() {
+    private void addOneRow() {
         String addSql = '''
 insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-test', 1, 2000, 'Test leaf Segment Mode Get Id')
 '''
         sql.executeUpdate(addSql)
     }
 
-    void testGetAllList() {
+    def 'test get all list'() {
         given:
         addOneRow()
         and:
@@ -61,7 +54,7 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         r[0].bizTag == 'leaf-segment-test'
     }
 
-    void testUpdateMaxId() {
+    def 'test update max id'() {
         given:
         addOneRow()
         and:
@@ -70,11 +63,11 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         one.maxId == 2001
     }
 
-    void testUpdateMaxIdMultiThread() {
+    def 'test update max id multi threads'() {
         given:
         addOneRow()
         and:
-        final int loopTimes = 100
+        int loopTimes = 100
         def set = Collections.synchronizedSortedSet(new TreeSet<Long>())
         def latch = new CountDownLatch(loopTimes)
         loopTimes.times {
@@ -94,7 +87,7 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         set.size() == 100
     }
 
-    void testUpdateMaxIdByCustomStep() {
+    def 'test update max id by custom step'() {
         given:
         addOneRow()
         and:
@@ -103,7 +96,7 @@ insert into leaf_alloc(biz_tag, max_id, step, description) values('leaf-segment-
         one.maxId == 10001
     }
 
-    void testGetAllBizTagList() {
+    def 'test get all biz tag list'() {
         given:
         addOneRow()
         and:
